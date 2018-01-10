@@ -1,0 +1,229 @@
+---
+layout: default
+---
+<div class="container">
+  <div class="row">
+
+    <div class="col-sm-8 col-sm-offset-2 card">
+      <div class="row">
+          <div class="col-sm-12">
+            <h4>My Token Wallet - <span id="tokenName"></span> (<span id="tokenSymbol"></span>)</h4>
+            <p>
+              Token Sale Ends: <span id="endTime"></span>
+            </p>
+            <p>
+              Raised: <span id="raised">0</span> of <span id="cap">0</span> ETH
+            </p>
+            <hr />
+          </div>
+      </div>
+
+      <div class="row">
+        <div class="col-sm-8">
+          <h1 class="title">Buy Tokens</h1>
+          <div class="row exchange">
+            <div class="col-xs-5">
+              <input id="buyTokens" type="text" value="1 ETH">
+            </div>
+            <div class="col-xs-2">
+              =
+            </div>
+            <div class="col-xs-5 redText">
+              <span id="tokenEquivalent"></span> KGT
+            </div>
+          </div>
+
+
+        </div>
+          <div class="col-sm-4">
+            <p>
+              <strong>My Account:</strong>
+            </p>
+            <p>
+              <a href="#"><span id="userAccount"></span></a>
+            </p>
+            <br />
+            <p>
+              <strong>My Token Balance :</strong>
+            </p>
+            <p><span id="userBalance">Loading</span></p>
+          </div>
+
+
+      </div>
+
+
+
+      <!-- <label class="col-lg-2 control-label">Check Token Balance</label> -->
+      <!-- <input id="userAddress" type="text" placeholder="Wallet Address"> -->
+
+      <!-- <button id="button">Check Balance</button> -->
+
+
+      <br />
+
+
+      <button id="buyButton">Buy Tokens</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<script src="/js/tokenABI.js"></script>
+<script src="/js/crowdsaleABI.js"></script>
+<script>
+window.addEventListener('load', function() {
+   console.log(window.web3);
+  if (typeof window.web3 !== 'undefined') {
+      window.web3 = new Web3(web3.currentProvider);
+  } else {
+      // set the provider you want from Web3.providers
+      // web3 = new Web3(new Web3.providers.HttpProvider("http://localhost:8545"));
+      web3 = new Web3(new Web3.providers.HttpProvider('https://ropsten.infura.io/'));
+  }
+
+  var accounts;
+  var defaultAccount;
+  var vault = "0xf8A0a19a555333615b09E3a688CBdAE4Ac38091C";
+  var crowdsaleContractAddress = "0x662014c47e3aea00f8607c25753b20cd29f35bcf";
+  var exchange_rate;
+
+  web3.eth.getAccounts(function(error, result){
+      if(!error) {
+          accounts = result;
+          defaultAccount = accounts[0];
+          web3.eth.defaultAccount = accounts[0];
+          $('#userAccount').text(defaultAccount.substring(0,11) + "...");
+       } else {
+          console.error(error);
+       }
+  })
+
+  var KieganToken = web3.eth.contract(tokenABI);
+  var kieganToken = KieganToken.at('0xe9e196d8181b616b9af058d9e0c09e3258ae84cb');
+  var KieganCrowdsale = web3.eth.contract(crowdsaleABI);
+  var kieganCrowdsale = KieganCrowdsale.at(crowdsaleContractAddress);
+
+  kieganToken.name(function(error, result){
+    if(!error){
+      $('#tokenName').text(result);
+    }else{
+      console.error(error);
+    };
+  });
+
+  kieganToken.symbol(function(error, result){
+    if(!error){
+      $('#tokenSymbol').text(result);
+    }else{
+      console.error(error);
+    };
+  });
+
+  kieganCrowdsale.rate(function(error, result){
+    if(!error){
+      exchange_rate = result.toNumber();
+      updateExchange();
+    }else{
+      console.error(error);
+    };
+  });
+
+  kieganCrowdsale.startTime(function(error, result){
+    if(!error){
+      const startTime = new Date(result.c[0]*1000);
+      // console.log(startTime);
+    }else{
+      console.error(error);
+    };
+  });
+
+  kieganCrowdsale.endTime(function(error, result){
+    if(!error){
+      const endTime = new Date(result.c[0]*1000);
+      $('#endTime').text(endTime);
+    }else{
+      console.error(error);
+    };
+  });
+
+  kieganCrowdsale.goal(function(error, result){
+    if(!error){
+      const goal = result.toNumber()/1000000000000000000;
+      console.log("min goal: " + goal);
+    }else{
+      console.error(error);
+    };
+  });
+
+  kieganCrowdsale.cap(function(error, result){
+    if(!error){
+      const cap = result.toNumber()/1000000000000000000;
+      $('#cap').text(cap);
+    }else{
+      console.error(error);
+    };
+  });
+
+  kieganCrowdsale.weiRaised(function(error, result){
+    if(!error){
+      const raised = result.toNumber()/1000000000000000000;
+      $('#raised').text(raised);
+    }else{
+      console.error(error);
+    };
+  });
+
+  kieganToken.balanceOf(web3.eth.accounts[0], function(error, result){
+    if(!error){
+      const balance = result.toNumber() / 1000000000000000000;
+      $('#userBalance').text(balance + " KGT");
+    }else{
+      console.error(error);
+    };
+  });
+
+  function updateExchange(){
+    var amt;
+    amt = $('#buyTokens').val();
+    amt = amt.replace(' ETH','') * exchange_rate;
+    $('#tokenEquivalent').text(amt);
+  }
+
+
+  // UI CODE
+  $('#tokenEquivalent').text("1000");
+
+  $('#buyTokens').on("keyup", function(){
+    updateExchange();
+  })
+
+  // $("#button").click(function() {
+  //     kieganToken.balanceOf($("#userAddress").val(), function(error, result){
+  //       if(!error){
+  //         $('#userBalance').text("Your balance: " + result.toNumber());
+  //       }else{
+  //         console.log(error);
+  //       }
+  //     });
+  // });
+
+  $("#buyButton").click(function() {
+      // 1 send ether
+      // var amount = web3.toWei(0.001, "ether");
+      // var amount = 1000;
+      var amt;
+      amt = $('#buyTokens').val().replace(' ETH','');
+      amt = amt * 1000000000000000000;
+      kieganCrowdsale.buyTokens(web3.eth.accounts[0], {from: web3.eth.accounts[0], value: amt}, function(error, response){
+        if(!error){
+
+        }else{
+
+        }
+      });
+  });
+
+})
+
+</script>
